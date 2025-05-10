@@ -28,7 +28,7 @@ if __name__ == "__main__":
         corr_msb_averages = averages_correction(msb_averages, line_averages)
 
         # Generate heatmap on the corrected averages
-        #generate_heatmap(corr_msb_averages, byte_index)
+        generate_heatmap(corr_msb_averages, byte_index)
 
         # (TODO) Recover key
         cache_misses = extract_cache_misses(corr_msb_averages)
