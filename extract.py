@@ -1,5 +1,8 @@
 from lib.parser import  parse_aes_file
-from lib.average_utils import compute_cache_line_averages, compute_averages_for_plaintext_group, averages_correction
+from lib.utils import (
+    compute_cache_line_averages, compute_averages_for_plaintext_group,
+    averages_correction, extract_cache_misses, recover_4msb_key_for_byte
+    )
 from lib.heatmap_generator import generate_heatmap
 from lib.const import PLAINTEXT_BYTES
 
@@ -25,11 +28,15 @@ if __name__ == "__main__":
         corr_msb_averages = averages_correction(msb_averages, line_averages)
 
         # Generate heatmap on the corrected averages
-        generate_heatmap(corr_msb_averages, byte_index)
+        #generate_heatmap(corr_msb_averages, byte_index)
 
         # (TODO) Recover key
+        cache_misses = extract_cache_misses(corr_msb_averages)
+        key_byte = recover_4msb_key_for_byte(cache_misses, byte_index)
+        print(f"Key for byte {byte_index}: {key_byte}")
+        recovered_key.append(key_byte)
 
-
-    print(f"First entry: {aes_data[0]}" )
-    #print(f"Averages: {avg}")
+    # Output recovered partial key to a file key.txt
+    with open("key.txt", 'w') as key_file:
+        key_file.write(str(recovered_key))
     

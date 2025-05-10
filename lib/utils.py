@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from lib.const import SETS, FIRST_POSSIBLE_BITS
+from lib.const import SETS, FIRST_POSSIBLE_BITS, TTABLE_OFFSET, PLAINTEXT_BYTES
 from lib.parser import AESData
-from collections import defaultdict
+from collections import defaultdict, Counter
 import statistics
 
 @dataclass
@@ -60,4 +60,35 @@ def averages_correction(msb_averages: list[GroupAvg], line_averages: list[float]
                 cache_line_average - line_averages[cache_line_num]
             )
     return msb_averages_copy
+
+# Identify the cache miss set for each 4-bit plaintext MSBs by finding the index of the maximum timing
+# measurement in the corrected averages
+def extract_cache_misses(corr_averages: list[GroupAvg]) -> list[int]:
+    cache_miss_sets = []
+    for bits, avg in enumerate(corr_averages):
+        max_index = avg.averages.index(max(avg.averages))
+        cache_miss_sets.append(max_index)
+    return cache_miss_sets
+
+# Recover most significant 4 bits of a key byte using cache misses
+def recover_4msb_key_for_byte(cache_misses: list[int], byte_index: int) -> str:
+    # Find which table is being used and compute its base table
+    # T0:02-17, T1:18-33, T2:34-49, T3:50-01 (with wrap-around)
+    table_number = (byte_index % 4)
+    base_table = ((table_number + TTABLE_OFFSET) % 4) * 16 + TTABLE_OFFSET
+
+    candidates = []
+
+    for plaintext_msb in range(PLAINTEXT_BYTES):
+        cache_miss_set = cache_misses[plaintext_msb]
+
+        # Calculate the set index within the table
+        table_set_index = (cache_miss_set - base_table) % SETS # Handle wrap-around
+
+        candidate_key_msb = table_set_index ^ plaintext_msb
+        candidates.append(candidate_key_msb)
     
+    # Identify most frequent candidate
+    key_msb = Counter(candidates).most_common(1)[0][0]
+
+    return f"0x{key_msb:X}"
