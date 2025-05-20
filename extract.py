@@ -7,6 +7,7 @@ from lib.heatmap_generator import generate_heatmap
 from lib.const import PLAINTEXT_BYTES
 
 aes_file_path = "output.txt"
+pdf_out_path = "heatmaps.pdf"
 
 if __name__ == "__main__":
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
         # Generate heatmap on the corrected averages
         generate_heatmap(corr_msb_averages, byte_index)
 
-        # (TODO) Recover key
+        # Recover key
         cache_misses = extract_cache_misses(corr_msb_averages)
         key_byte = recover_4msb_key_for_byte(cache_misses, byte_index)
         print(f"Key for byte {byte_index}: {key_byte}")
