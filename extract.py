@@ -1,3 +1,4 @@
+import argparse
 from lib.parser import  parse_aes_file
 from lib.utils import (
     compute_cache_line_averages, compute_averages_for_plaintext_group,
@@ -11,8 +12,14 @@ pdf_out_path = "heatmaps.pdf"
 
 if __name__ == "__main__":
 
+    p = argparse.ArgumentParser(description="extract.py <input-trace>")
+    p.add_argument("trace_file", help="Path for AES output file (usually, output.txt)")
+    args = p.parse_args()
+
+    print("Recovering key... ")
+
     # Parse the data from the file and save it in a data structure
-    aes_data = parse_aes_file(aes_file_path)
+    aes_data = parse_aes_file(args.trace_file)
     
     # Compute averages of all samples
     line_averages = compute_cache_line_averages(aes_data)
