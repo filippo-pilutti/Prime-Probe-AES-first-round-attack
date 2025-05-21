@@ -28,6 +28,7 @@ def compute_cache_line_averages(samples: list[AESData]) -> list[float]:
 # Group AES samples by the 4 MSBs of a given byte of the plaintext and compute the cache line averages for each group
 # Return a list of averages, one for each group of 4 MSBs. I will have 16 groups at the end
 def compute_averages_for_plaintext_group(samples: list[AESData], byte_index: int) -> list[GroupAvg]:
+    
     # Group samples by the 4 MSBs of the target byte
     grouped_samples = defaultdict(list)
     for sample in samples:
@@ -50,24 +51,25 @@ def compute_averages_for_plaintext_group(samples: list[AESData], byte_index: int
 # Apply correction to clean the data
 # For each group 4 MSBs of the plaintext, subtract from the average of the cache line the average of all the samples
 def averages_correction(msb_averages: list[GroupAvg], line_averages: list[float]) -> list[GroupAvg]:
-    msb_averages_copy = [
-        GroupAvg(sample.plaintext_hex, sample.averages)
-        for sample in msb_averages
-    ]
-    for sample_averages in msb_averages_copy:
-        for cache_line_num, cache_line_average in enumerate(sample_averages.averages):
-            sample_averages.averages[cache_line_num] = (
-                cache_line_average - line_averages[cache_line_num]
-            )
-    return msb_averages_copy
+    
+    corrected = []
+    
+    for savg in msb_averages:
+        corrected_values = [a - line_averages[i] for i,a in enumerate(savg.averages)]
+        corrected.append(GroupAvg(plaintext_hex=savg.plaintext_hex, averages=corrected_values))
+    
+    return corrected
 
 # Identify the cache miss set for each 4-bit plaintext MSBs by finding the index of the maximum timing
 # measurement in the corrected averages
 def extract_cache_misses(corr_averages: list[GroupAvg]) -> list[int]:
+    
     cache_miss_sets = []
+    
     for bits, avg in enumerate(corr_averages):
         max_index = avg.averages.index(max(avg.averages))
         cache_miss_sets.append(max_index)
+    
     return cache_miss_sets
 
 # Recover most significant 4 bits of a key byte using cache misses
@@ -76,19 +78,17 @@ def recover_4msb_key_for_byte(cache_misses: list[int], byte_index: int) -> str:
     # T0:02-17, T1:18-33, T2:34-49, T3:50-01 (with wrap-around)
     table_number = (byte_index % 4)
     base_table = ((table_number + TTABLE_OFFSET) % 4) * 16 + TTABLE_OFFSET
-
+    
     candidates = []
-
+    
     for plaintext_msb in range(PLAINTEXT_BYTES):
         cache_miss_set = cache_misses[plaintext_msb]
-
         # Calculate the set index within the table
         table_set_index = (cache_miss_set - base_table) % SETS # Handle wrap-around
-
         candidate_key_msb = table_set_index ^ plaintext_msb
         candidates.append(candidate_key_msb)
     
     # Identify most frequent candidate
     key_msb = Counter(candidates).most_common(1)[0][0]
-
+    
     return f"0x{key_msb:X}"

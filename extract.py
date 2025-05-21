@@ -1,4 +1,5 @@
 import argparse
+import os
 from lib.parser import  parse_aes_file
 from lib.utils import (
     compute_cache_line_averages, compute_averages_for_plaintext_group,
@@ -7,19 +8,26 @@ from lib.utils import (
 from lib.heatmap_generator import generate_heatmap
 from lib.const import PLAINTEXT_BYTES
 
-aes_file_path = "output.txt"
 pdf_out_path = "heatmaps.pdf"
 
 if __name__ == "__main__":
 
-    p = argparse.ArgumentParser(description="extract.py <input-trace>")
-    p.add_argument("trace_file", help="Path for AES output file (usually, output.txt)")
+    p = argparse.ArgumentParser(description="extract.py [<input-trace>]")
+    p.add_argument("trace_file", nargs='?', help="Optional path for AES attack output file (defaults to 'output.txt')")
     args = p.parse_args()
+
+    if args.trace_file:
+        path = args.trace_file
+    else:
+        path = "output.txt"
+
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Trace file not found: {path}")
 
     print("Recovering key... ")
 
     # Parse the data from the file and save it in a data structure
-    aes_data = parse_aes_file(args.trace_file)
+    aes_data = parse_aes_file(path)
     
     # Compute averages of all samples
     line_averages = compute_cache_line_averages(aes_data)
