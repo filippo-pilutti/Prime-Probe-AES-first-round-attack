@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from lib.const import SETS, FIRST_POSSIBLE_BITS, TTABLE_OFFSET, PLAINTEXT_BYTES
 from lib.parser import AESData
 from collections import defaultdict, Counter
-import statistics
+import numpy as np
 
 @dataclass
 class GroupAvg(object):
@@ -15,15 +15,10 @@ def compute_cache_line_averages(samples: list[AESData]) -> list[float]:
     # Create a list representing the CL values along each cache line and initialize empty
     cache_line_values: list[list[int]] = [[] for _ in range(SETS)]
     
-    # Group values in the same line for all samples
-    for sample in samples:
-        for i, val in enumerate(sample.cl_values):
-            cache_line_values[i].append(val)
+    # Calculate the average of each cache line    
+    arr = np.asarray([s.cl_values for s in samples])
+    return arr.mean(axis=0).astype(float).tolist()
 
-    # Calculate the average of each cache line
-    line_averages: list[float] = [statistics.mean(cl_val) for cl_val in cache_line_values]
-
-    return line_averages
 
 # Group AES samples by the 4 MSBs of a given byte of the plaintext and compute the cache line averages for each group
 # Return a list of averages, one for each group of 4 MSBs. I will have 16 groups at the end
@@ -39,11 +34,9 @@ def compute_averages_for_plaintext_group(samples: list[AESData], byte_index: int
     # Compute averages for each MSB group
     msb_averages = [0] * len(FIRST_POSSIBLE_BITS)
     for hex_msb in FIRST_POSSIBLE_BITS:
-        samples = grouped_samples.get(hex_msb, [])
-        averages = compute_cache_line_averages(samples)
-        index = int(hex_msb, 16)
-        msb_averages[index] = GroupAvg(
-            plaintext_hex = hex_msb, averages = averages
+        msb_averages[int(hex_msb, 16)] = GroupAvg(
+            plaintext_hex = hex_msb,
+            averages = compute_cache_line_averages(grouped_samples.get(hex_msb, []))
         )
 
     return msb_averages
@@ -52,25 +45,22 @@ def compute_averages_for_plaintext_group(samples: list[AESData], byte_index: int
 # For each group 4 MSBs of the plaintext, subtract from the average of the cache line the average of all the samples
 def averages_correction(msb_averages: list[GroupAvg], line_averages: list[float]) -> list[GroupAvg]:
     
+    base = np.asarray(line_averages)
     corrected = []
     
     for savg in msb_averages:
-        corrected_values = [a - line_averages[i] for i,a in enumerate(savg.averages)]
-        corrected.append(GroupAvg(plaintext_hex=savg.plaintext_hex, averages=corrected_values))
+        corrected.append(GroupAvg(
+            plaintext_hex = savg.plaintext_hex,
+            averages = (np.asarray(savg.averages) - base).tolist()
+        ))
     
     return corrected
 
 # Identify the cache miss set for each 4-bit plaintext MSBs by finding the index of the maximum timing
 # measurement in the corrected averages
 def extract_cache_misses(corr_averages: list[GroupAvg]) -> list[int]:
-    
-    cache_miss_sets = []
-    
-    for bits, avg in enumerate(corr_averages):
-        max_index = avg.averages.index(max(avg.averages))
-        cache_miss_sets.append(max_index)
-    
-    return cache_miss_sets
+
+    return [int(np.argmax(a.averages)) for a in corr_averages]
 
 # Recover most significant 4 bits of a key byte using cache misses
 def recover_4msb_key_for_byte(cache_misses: list[int], byte_index: int) -> str:
