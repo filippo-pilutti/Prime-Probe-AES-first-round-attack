@@ -13,8 +13,6 @@ project_root/
 │   ├── parser.py             # Trace file parser
 │   ├── heatmap_generator.py  # Heatmap PDF generation
 │   ├── const.py              # Constants (T-table offsets, etc.)
-│   ├── aes_partial.py        # (Optional) partial AES round logic
-│   └── lsb_bruteforce.py     # (Optional) full key recovery via ciphertext matching
 │
 ├── output.txt                # Input trace file (plaintext, ciphertext, cache timings)
 ├── key.txt                   # Recovered MSBs of AES key (hex list)
