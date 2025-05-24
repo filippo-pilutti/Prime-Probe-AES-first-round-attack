@@ -51,7 +51,7 @@ python extract.py ../output.txt
 
 Heatmaps are automatically generated per key byte index. Each one shows which cache sets were evicted for each group of 4 MSBs of the plaintext byte, making the cache leak visually interpretable.
 
-## 🛠 Requirements
+## Requirements
 
 - Python 3.8+
 - [`matplotlib`](https://matplotlib.org/)
