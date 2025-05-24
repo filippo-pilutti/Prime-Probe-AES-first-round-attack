@@ -12,9 +12,6 @@ class GroupAvg(object):
 # Calculate the average value for each CL position across all sample
 def compute_cache_line_averages(samples: list[AESData]) -> list[float]:
     
-    # Create a list representing the CL values along each cache line and initialize empty
-    cache_line_values: list[list[int]] = [[] for _ in range(SETS)]
-    
     # Calculate the average of each cache line    
     arr = np.asarray([s.cl_values for s in samples])
     return arr.mean(axis=0).astype(float).tolist()
