@@ -4,3 +4,6 @@ heatmaps/
 .vscode
 key.txt
 heatmaps.pdf
+build/
+dist/
+extract.spec
